@@ -3,42 +3,72 @@ import re
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.decomposition import TruncatedSVD
 import numpy as np
+import konlpy as k
+import pandas as pd
 
+
+#0. json 파일 불러오기
 patent_file_path = "patent.json"
-
 with open(patent_file_path, "r", encoding="utf-8") as file:
     patent_data = json.load(file)
-
-patent_names = [patent["patent_name"] for patent in patent_data[0]["patents"]]
-
+# patent_names = [patent["patent_name"] for patent in patent_data[0]["patents"]]
+all_patents = []
+for data in patent_data:
+    patents = data["patents"]
+    patent_names = [patent["patent_name"] for patent in patents]
+    all_patents.extend(patent_names)
+# print(all_patents)
 #1. 데이터 전처리 수행 (한국어 문자 및 공백만 남도록)
 
+#한국어 문자, 중복 공백 제거
 def preprocess_text(text):
-    results = re.sub(r"[^ㄱ-ㅎㅏ-ㅣ가-힣\s]", "", text) # 한국어 문자에 관해서만 ~.~
-    results = re.sub(r"\s+", " ", results).strip() # 중복 공백 제거
+    results = re.sub(r"[^ㄱ-ㅎㅏ-ㅣ가-힣\s]", "", text)
+    results = re.sub(r"\s+", " ", results).strip()
     return results
 
-preprocessed_patents = [preprocess_text(name) for name in patent_names]
+preprocessed_patents = [preprocess_text(name) for name in all_patents]
+flat_string = ' '.join(preprocessed_patents) #하나의 문자열로 변환
 
+#형태소 분석
+okt = k.tag.Okt()
+komoran = k.tag.Komoran()
+
+nouns = okt.nouns(flat_string)
+# count = Counter(nouns)
+# print(nouns) #명사만 출력
+
+#불용어 제거
+stopWords = '방법', '이용', '이의', '이상', '포함', '사용자','및','장치','사용','함유',''
+# print(stopWords)
+nouns_clean = []
+for word in nouns:
+    if word not in stopWords:
+        nouns_clean.append(word)
+        
+# print(nouns_clean)
 # 3. TF-IDF 적용
-vectorizer = TfidfVectorizer(max_features=10)
-X_tfidf = vectorizer.fit_transform(preprocessed_patents)
+vectorizer = TfidfVectorizer(max_features=100)
+X_tfidf = vectorizer.fit_transform(nouns_clean)
 
 print(vectorizer.get_feature_names_out())
 
+
+
+
+
+
 #정수 인덱스의 이름 불러오기
-# print(vectorizer.get_feature_names_out())
 
 # #3. SVD 적용 
 
-# svd = TruncatedSVD(n_components=2)
-# svd_result = svd.fit_transform(X_tfidf)
+svd = TruncatedSVD(n_components=2)
+svd_result = svd.fit_transform(X_tfidf)
 
-# # TF-IDF와 SVD 결과를 출력합니다.
-# print("TF-IDF 결과:")
-# print(X_tfidf)
-# print("\nSVD 결과:")
-# print(svd_result)
+# TF-IDF와 SVD 결과를 출력합니다.
+print("TF-IDF 결과:")
+print(X_tfidf)
+print("\nSVD 결과:")
+print(svd_result)
 
 # # 3. SVD 적용
 # svd = TruncatedSVD(n_components=5)
