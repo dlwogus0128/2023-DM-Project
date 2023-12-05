@@ -6,6 +6,7 @@ from matplotlib import font_manager
 
 def visualize_results(svd_components, tfidf_results):
     graph = nx.Graph()
+    print("nxversion: "+ nx.__version__)
 
     for idx, topic in enumerate(svd_components):
         topic_keywords = [(tfidf_results[i], topic[i].round(5)) for i in topic.argsort()[:-10 - 1:-1]]
