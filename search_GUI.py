@@ -1,67 +1,75 @@
-import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton
+import tkinter as tk
+from tkinter import ttk
+from subprocess import Popen, PIPE
 
+def get_results():
+    keyword = keyword_entry.get()
 
-class PatentSearchApp(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.init_ui()
+    # Execute main.py with keyword as input
+    process = Popen(['python', 'main.py'], stdin=PIPE, stdout=PIPE, stderr=PIPE, universal_newlines=True)
+    output, _ = process.communicate(keyword + '\n')
+    
+    # Split the output to get highest and lowest patents
+    output_lines = output.split('\n')
+    highest_patents = '\n'.join(output_lines[output_lines.index('Most Trending Patents with given keywords')+1 : output_lines.index('Emerging Patents with given keywords')-1])
+    lowest_patents = '\n'.join(output_lines[output_lines.index('Emerging Patents with given keywords')+1 :])
 
-    def init_ui(self):
-        self.setWindowTitle('Patent Search')
+    # Display the results in the GUI
+    # display_as_table(highest_patents, lowest_patents)
+    highest_patents_label.config(text=highest_patents)
+    lowest_patents_label.config(text=lowest_patents)
 
-        layout = QVBoxLayout()
+def display_as_table(highest_patents, lowest_patents):
+    result_window = tk.Toplevel()
+    result_window.title("Patent Search Results")
+    
+    columns = ('Patent Name', 'Application Date', 'Applicant')
 
-        label = QLabel('직업을 입력하세요:')
-        self.job_input = QLineEdit()
-        layout.addWidget(label)
-        layout.addWidget(self.job_input)
+    highest_treeview = ttk.Treeview(result_window, columns=columns, show='headings')
+    lowest_treeview = ttk.Treeview(result_window, columns=columns, show='headings')
 
-        search_button = QPushButton('검색')
-        search_button.clicked.connect(self.search_patents)
-        layout.addWidget(search_button)
+    # 각 열에 대한 제목 설정
+    for col in columns:
+        highest_treeview.heading(col, text=col)
+        lowest_treeview.heading(col, text=col)
 
-        self.result_label = QLabel()
-        layout.addWidget(self.result_label)
+    # 각 열의 너비 설정
+    highest_treeview.column("Patent Name", width=400)
+    highest_treeview.column("Application Date", width=100)
+    highest_treeview.column("Applicant", width=200)
 
-        self.setLayout(layout)
-        self.show()
+    lowest_treeview.column("Patent Name", width=400)
+    lowest_treeview.column("Application Date", width=100)
+    lowest_treeview.column("Applicant", width=200)
 
-    def search_patents(self):
-        job = self.job_input.text()  # 입력된 직업
-        # 여기에 직업과 관련된 특허 검색 및 결과 출력하는 코드 추가
-        similar_patents = self.find_similar_patents(job)
-        
-        if similar_patents:
-            result_text = "\n".join(similar_patents)
-        else:
-            result_text = "일치하는 특허를 찾지 못했습니다."
-        
-        self.result_label.setText(result_text)
+    # 데이터 입력
+    for patent in highest_patents:
+        highest_treeview.insert('', 'end', values=patent)
 
-    def find_similar_patents(self, job):
-        # 여기에 직업과 관련된 특허 검색하는 코드를 작성해야 합니다.
-        # 입력된 직업과 유사한 특허를 찾아 반환하는 로직을 구현해야 합니다.
-        # (여기서는 실제 데이터가 없으므로 가상의 로직으로 대체하였습니다.)
-        if job == "engineer":
-            return [
-                "특허 1: 엔진 개발에 관한 내용입니다.",
-                "특허 2: 공학 분야의 특허입니다."
-            ]
-        elif job == "scientist":
-            return [
-                "특허 3: 과학 연구 관련 특허입니다.",
-                "특허 4: 신기술 발견에 관한 특허입니다."
-            ]
-        else:
-            return []
+    for patent in lowest_patents:
+        lowest_treeview.insert('', 'end', values=patent)
 
+    highest_treeview.pack(padx=10, pady=5)
+    lowest_treeview.pack(padx=10, pady=5)
 
-def main():
-    app = QApplication(sys.argv)
-    patent_search_app = PatentSearchApp()
-    sys.exit(app.exec_())
+# Create the main window
+root = tk.Tk()
+root.title('Patent Search')
 
+# Create and place GUI elements
+keyword_label = tk.Label(root, text="Enter keyword:")
+keyword_label.pack()
 
-if __name__ == '__main__':
-    main()
+keyword_entry = tk.Entry(root)
+keyword_entry.pack()
+
+search_button = tk.Button(root, text="Search", command=get_results)
+search_button.pack()
+
+highest_patents_label = tk.Label(root, text="Most Trending Patents with given keywords")
+highest_patents_label.pack()
+
+lowest_patents_label = tk.Label(root, text="Emerging Patents with given keywords")
+lowest_patents_label.pack()
+
+root.mainloop()
